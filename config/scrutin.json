@@ -1,0 +1,10 @@
+{
+  "titre": "Élection du bureau du BDE 2026",
+  "description": "Scrutin de démonstration FerraVote, listes fictives",
+  "listes": [
+    { "code": "L1", "nom": "Liste Horizon" },
+    { "code": "L2", "nom": "Liste Phénix" },
+    { "code": "L3", "nom": "Liste Kraken" }
+  ],
+  "nbElecteurs": 6
+}

@@ -1,0 +1,7 @@
+node_modules/
+.env
+# données locales de l'organisateur (liste d'émargement nominative, état du scrutin)
+data/*
+!data/.gitkeep
+.DS_Store
+*.log
