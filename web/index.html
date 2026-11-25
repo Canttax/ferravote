@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FerraVote</title>
+  <link rel="stylesheet" href="/web/style.css">
+  <script src="/vendor/xrpl.js"></script>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <h1>FerraVote</h1>
+      <p id="titre-scrutin">Chargement du scrutin...</p>
+      <p class="reseau">Réseau : <span id="reseau">?</span></p>
+    </div>
+  </header>
+
+  <nav class="wrap tabs">
+    <button class="tab active" data-tab="voter">Voter</button>
+    <button class="tab" data-tab="resultats">Résultats</button>
+    <button class="tab" data-tab="apropos">Comment ça marche</button>
+  </nav>
+
+  <main class="wrap">
+    <!-- ======== VOTER ======== -->
+    <section id="voter" class="panel active">
+      <h2>Voter</h2>
+      <p class="aide">
+        Pour la démo, chaque électeur utilise un wallet de test (seed générée par <code>npm run wallets</code>).
+        La seed reste dans votre navigateur, elle n'est envoyée à aucun serveur.
+      </p>
+
+      <label for="seed">Seed de test de l'électeur</label>
+      <div class="ligne">
+        <input id="seed" type="password" placeholder="sEd..." autocomplete="off">
+        <button id="btn-verifier" class="secondaire">Vérifier mon jeton</button>
+      </div>
+      <p id="info-electeur" class="info"></p>
+
+      <fieldset id="choix-listes">
+        <legend>Votre choix</legend>
+      </fieldset>
+
+      <button id="btn-voter" disabled>Envoyer mon bulletin</button>
+      <div id="etat-vote" class="etat"></div>
+    </section>
+
+    <!-- ======== RESULTATS ======== -->
+    <section id="resultats" class="panel">
+      <h2>Résultats</h2>
+      <p class="aide">
+        Le décompte est recalculé dans votre navigateur à partir de l'historique public de l'urne.
+        Personne n'a besoin de nous croire sur parole : vous pouvez changer l'adresse et recompter n'importe quel scrutin FerraVote.
+      </p>
+      <div class="grille2">
+        <div>
+          <label for="urne">Adresse de l'urne</label>
+          <input id="urne" placeholder="r...">
+        </div>
+        <div>
+          <label for="mpt">ID du jeton de vote (MPT)</label>
+          <input id="mpt" placeholder="00...">
+        </div>
+      </div>
+      <button id="btn-compter">Recompter depuis le ledger</button>
+      <div id="etat-compte" class="etat"></div>
+
+      <div id="bloc-resultats" hidden>
+        <div id="chiffres" class="chiffres"></div>
+        <div id="barres"></div>
+        <h3>Bulletins</h3>
+        <table>
+          <thead><tr><th>Électeur</th><th>Choix</th><th>Statut</th><th>Ledger</th><th>Transaction</th></tr></thead>
+          <tbody id="bulletins"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ======== A PROPOS ======== -->
+    <section id="apropos" class="panel">
+      <h2>Comment ça marche</h2>
+      <ol>
+        <li>L'organisateur crée un jeton <strong>VOTE</strong> (MPT) : autorisation obligatoire, pas de transfert entre électeurs, plafond égal au nombre d'inscrits.</li>
+        <li>Chaque électeur inscrit demande le jeton, l'organisateur valide son adresse après vérification de la liste d'émargement (hors chaîne).</li>
+        <li>L'urne envoie 1 VOTE à chaque adresse autorisée.</li>
+        <li>Pour voter, l'électeur renvoie son jeton à l'urne avec le code de sa liste dans le Memo. Son solde tombe à 0, il ne peut plus revoter.</li>
+        <li>À la clôture l'urne verrouille le jeton : plus aucun bulletin ne passe.</li>
+        <li>N'importe qui recompte en relisant l'historique de l'urne.</li>
+      </ol>
+      <h3>Limites assumées</h3>
+      <ul>
+        <li>Le vote est <strong>pseudonyme</strong>, pas secret : le choix est lisible dans le Memo et l'organisateur connaît le lien adresse / personne.</li>
+        <li>L'inscription reste centralisée chez l'organisateur.</li>
+        <li>Testnet uniquement, aucune valeur légale.</li>
+      </ul>
+    </section>
+  </main>
+
+  <footer class="wrap">Los Ferratos, Hackathon XRPL 2026</footer>
+  <script type="module" src="/web/app.js"></script>
+</body>
+</html>
