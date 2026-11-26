@@ -79,19 +79,95 @@ export async function connect({ verbose = false } = {}) {
   throw new Error("aucun serveur Testnet ne répond (Wi-Fi qui bloque ? essayer un partage de connexion, Codespaces ou --sim)");
 }
 
-// client.fundWallet() avec quelques essais : le faucet sature quand toute la promo l'appelle
-export async function fundWallet(client, essais = 4) {
-  if (SIM) return client.fundWallet();
-  for (let i = 1; ; i++) {
+// ---------- Financement des wallets ----------
+// 1. le faucet du Testnet (client.fundWallet) ;
+// 2. si le faucet ne répond pas : un wallet "banque" déjà financé envoie des XRP au nouveau wallet.
+//    La banque vient de BANQUE_SEED dans .env, ou du wallets.json créé par le Codespace
+//    XRPL Academy (dev-training-june-2026), s'il est à côté de notre dépôt.
+let faucetEnPanne = false;
+
+function walletDepuisJson(w) {
+  const seed = w.seed || w.secret || w.familySeed;
+  if (seed) return xrpl.Wallet.fromSeed(seed);
+  if (w.privateKey && w.publicKey) return new xrpl.Wallet(w.publicKey, w.privateKey);
+  return null;
+}
+
+export function walletsBanque() {
+  if (process.env.BANQUE_SEED) {
+    return process.env.BANQUE_SEED.split(",").map((s) => s.trim()).filter(Boolean).map((s) => xrpl.Wallet.fromSeed(s));
+  }
+  const candidats = [
+    process.env.BANQUE_WALLETS_JSON,
+    path.join(ROOT, "..", "dev-training-june-2026", "wallets.json"),
+    "/workspaces/dev-training-june-2026/wallets.json",
+  ].filter(Boolean);
+  for (const f of candidats) {
+    if (!fs.existsSync(f)) continue;
     try {
-      return await client.fundWallet(null, { faucetHost: FAUCET_HOST, usageContext: "ferravote" });
-    } catch (err) {
-      if (i >= essais) throw new Error(`faucet indisponible après ${essais} essais (${err.message})`);
-      const attente = 3 * i;
-      console.log(`  faucet saturé, nouvel essai dans ${attente} s...`);
-      await new Promise((r) => setTimeout(r, attente * 1000));
+      const data = JSON.parse(fs.readFileSync(f, "utf8"));
+      const liste = Array.isArray(data) ? data : data.wallets || Object.values(data);
+      const wallets = liste.map(walletDepuisJson).filter(Boolean);
+      if (wallets.length) return wallets;
+    } catch {
+      // fichier illisible, on passe au suivant
     }
   }
+  return [];
+}
+
+export async function soldeXrp(client, address) {
+  try {
+    const r = await client.request({ command: "account_info", account: address, ledger_index: "validated" });
+    return Number(r.result.account_data.Balance) / 1e6;
+  } catch {
+    return 0;
+  }
+}
+
+async function financerDepuisBanque(client, montant) {
+  const banque = walletsBanque();
+  if (!banque.length) {
+    throw new Error("faucet indisponible et pas de wallet banque (mettre BANQUE_SEED dans .env, voir README)");
+  }
+  // on prend le wallet banque le plus riche
+  let meilleur = null;
+  let max = -1;
+  for (const w of banque) {
+    const solde = await soldeXrp(client, w.address);
+    if (solde > max) [meilleur, max] = [w, solde];
+  }
+  if (max < montant + 2) throw new Error(`wallet banque ${meilleur.address} presque vide (${max} XRP)`);
+
+  const wallet = xrpl.Wallet.generate();
+  const res = await submit(
+    client,
+    meilleur,
+    { TransactionType: "Payment", Account: meilleur.address, Destination: wallet.address, Amount: xrpl.xrpToDrops(String(montant)) },
+    { quiet: true }
+  );
+  if (!res.ok) throw new Error(`financement depuis la banque refusé (${res.code})`);
+  return { wallet, balance: montant, source: `banque ${meilleur.address}` };
+}
+
+// montant : XRP envoyés par la banque si on passe par elle (le faucet donne toujours 100)
+export async function fundWallet(client, { montant = Number(process.env.FUND_XRP) || 10, essais = 2 } = {}) {
+  if (SIM) return { ...(await client.fundWallet()), source: "faucet simulé" };
+  if (!faucetEnPanne) {
+    for (let i = 1; i <= essais; i++) {
+      try {
+        const r = await client.fundWallet(null, { faucetHost: FAUCET_HOST, usageContext: "ferravote" });
+        return { ...r, source: "faucet" };
+      } catch (err) {
+        const cause = err.cause?.code || err.cause?.message || "";
+        console.log(`  faucet ${FAUCET_HOST} : ${err.message}${cause ? ` (${cause})` : ""}`);
+        if (i < essais) await new Promise((r) => setTimeout(r, 3000));
+      }
+    }
+    faucetEnPanne = true; // inutile de réessayer pour chaque wallet
+    console.log("  faucet indisponible, on finance les wallets depuis le wallet banque");
+  }
+  return financerDepuisBanque(client, montant);
 }
 
 export function urneWallet() {

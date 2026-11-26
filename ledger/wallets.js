@@ -20,13 +20,14 @@ export async function createWallets({ force = false } = {}) {
   const client = await connect({ verbose: true });
 
   console.log(SIM ? "Financement des comptes par le faucet simulé..." : "Financement des comptes via le faucet Testnet (ça peut prendre une minute)...");
-  const fund = async (label) => {
-    const { wallet, balance } = await fundWallet(client);
-    console.log(`  ${label.padEnd(12)} ${wallet.address}  ${balance} XRP`);
+  // L'urne a besoin d'un peu plus (réserve du jeton + frais de toutes les autorisations)
+  const fund = async (label, montant = 5) => {
+    const { wallet, balance, source } = await fundWallet(client, { montant });
+    console.log(`  ${label.padEnd(12)} ${wallet.address}  ${balance} XRP  (${source})`);
     return wallet;
   };
 
-  const urne = await fund("urne");
+  const urne = await fund("urne", 10);
   const electeurs = [];
   for (let i = 0; i < nbElecteurs; i++) electeurs.push(await fund(`électeur ${i + 1}`));
   const intrus = await fund("intrus");
