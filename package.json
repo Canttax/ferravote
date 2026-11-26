@@ -16,8 +16,11 @@
     "close": "node ledger/close.js",
     "tally": "node tally/cli.js",
     "demo": "node scripts/demo.js",
+    "demo:sim": "node scripts/demo.js --sim",
     "web": "node web/server.js",
-    "test": "node --test test/*.test.js"
+    "web:sim": "node web/server.js --sim",
+    "test": "node --test test/*.test.js",
+    "sim:reset": "node sim/reset.js"
   },
   "dependencies": {
     "dotenv": "^18.0.10",

@@ -3,7 +3,7 @@
 //   npm run tally -- --urne rXXX --mpt 00ABC...    -> recomptage par un observateur
 import fs from "node:fs";
 import path from "node:path";
-import { ROOT, connect, loadScrutin, loadState, txLink, accountLink, isMain, run } from "../ledger/common.js";
+import { ROOT, DATA_DIR, connect, loadScrutin, loadState, txLink, accountLink, isMain, run } from "../ledger/common.js";
 import { tallyFromLedger } from "./core.js";
 
 function arg(name) {
@@ -39,10 +39,10 @@ export async function tally({ urne, mptId } = {}) {
   }
 
   // Cache pour l'affichage, ce n'est PAS la source de vérité (le ledger l'est)
-  const out = path.join(ROOT, "data", "resultat.json");
+  const out = path.join(DATA_DIR, "resultat.json");
   fs.mkdirSync(path.dirname(out), { recursive: true });
   fs.writeFileSync(out, JSON.stringify({ calculeLe: new Date().toISOString(), ...r }, null, 2) + "\n");
-  console.log(`\nRésultat enregistré dans data/resultat.json`);
+  console.log(`\nRésultat enregistré dans ${path.relative(ROOT, out)}`);
   return r;
 }
 

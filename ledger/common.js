@@ -4,14 +4,32 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
 import xrpl from "xrpl";
+import { SimClient } from "../sim/client.js";
 
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 dotenv.config({ path: path.join(ROOT, ".env"), quiet: true });
 
-export const NETWORK_URL = process.env.XRPL_NETWORK || "wss://s.altnet.rippletest.net:51233";
-export const EXPLORER = process.env.XRPL_EXPLORER || "https://testnet.xrpl.org";
+// Deux modes :
+//   - testnet (par défaut) : vrai XRPL Testnet via xrpl.js
+//   - simulation : ledger simulé en local (dossier sim/), avec --sim ou XRPL_MODE=simulation
+export const SIM = process.argv.includes("--sim") || process.env.XRPL_MODE === "simulation";
+export const MODE = SIM ? "simulation" : "testnet";
 
-const STATE_FILE = path.join(ROOT, "data", "scrutin-state.json");
+// Chaque mode a ses propres données et ses propres wallets, pour ne jamais mélanger
+export const DATA_DIR = SIM ? path.join(ROOT, "data", "sim") : path.join(ROOT, "data");
+export const ENV_FILE = SIM ? path.join(DATA_DIR, "wallets.env") : path.join(ROOT, ".env");
+if (SIM) {
+  for (const k of ["URNE_SEED", "ELECTEUR_SEEDS", "INTRUS_SEED"]) delete process.env[k];
+  dotenv.config({ path: ENV_FILE, quiet: true, override: true });
+}
+
+const WEB_PORT = Number(process.env.PORT) || 3000;
+export const NETWORK_URL = SIM ? "simulation locale" : process.env.XRPL_NETWORK || "wss://s.altnet.rippletest.net:51233";
+export const EXPLORER = SIM
+  ? `http://localhost:${WEB_PORT}/web/explorer.html`
+  : process.env.XRPL_EXPLORER || "https://testnet.xrpl.org";
+
+const STATE_FILE = path.join(DATA_DIR, "scrutin-state.json");
 const SCRUTIN_FILE = path.join(ROOT, "config", "scrutin.json");
 
 export function loadScrutin() {
@@ -33,14 +51,14 @@ export function saveState(patch) {
 }
 
 export async function connect() {
-  const client = new xrpl.Client(NETWORK_URL);
+  const client = SIM ? new SimClient(path.join(DATA_DIR, "ledger.json")) : new xrpl.Client(NETWORK_URL);
   await client.connect();
   return client;
 }
 
 export function urneWallet() {
   if (!process.env.URNE_SEED) {
-    throw new Error("URNE_SEED manquant dans .env (lancer d'abord : npm run wallets)");
+    throw new Error(`URNE_SEED manquant dans ${path.relative(ROOT, ENV_FILE)} (lancer d'abord : npm run wallets${SIM ? " -- --sim" : ""})`);
   }
   return xrpl.Wallet.fromSeed(process.env.URNE_SEED);
 }
@@ -48,7 +66,7 @@ export function urneWallet() {
 export function electeurWallets() {
   const seeds = (process.env.ELECTEUR_SEEDS || "").split(",").map((s) => s.trim()).filter(Boolean);
   if (seeds.length === 0) {
-    throw new Error("ELECTEUR_SEEDS manquant dans .env (lancer d'abord : npm run wallets)");
+    throw new Error(`ELECTEUR_SEEDS manquant dans ${path.relative(ROOT, ENV_FILE)} (lancer d'abord : npm run wallets${SIM ? " -- --sim" : ""})`);
   }
   return seeds.map((s) => xrpl.Wallet.fromSeed(s));
 }
@@ -59,11 +77,11 @@ export function intrusWallet() {
 }
 
 export function txLink(hash) {
-  return `${EXPLORER}/transactions/${hash}`;
+  return SIM ? `${EXPLORER}#tx=${hash}` : `${EXPLORER}/transactions/${hash}`;
 }
 
 export function accountLink(address) {
-  return `${EXPLORER}/accounts/${address}`;
+  return SIM ? `${EXPLORER}#account=${address}` : `${EXPLORER}/accounts/${address}`;
 }
 
 // Signe, envoie et attend la validation. Ne lève pas d'erreur si la transaction est
@@ -93,7 +111,6 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function waitValidated(client, hash, lastLedger) {
   for (;;) {
-    await sleep(1000);
     try {
       const res = await client.request({ command: "tx", transaction: hash });
       if (res.result.validated) return res.result;
@@ -101,6 +118,7 @@ async function waitValidated(client, hash, lastLedger) {
       if (err?.data?.error !== "txnNotFound") throw err;
     }
     if ((await client.getLedgerIndex()) > lastLedger) return null;
+    await sleep(1000);
   }
 }
 
@@ -108,7 +126,7 @@ export function requireState(...keys) {
   const state = loadState();
   for (const k of keys) {
     if (!state[k]) {
-      throw new Error(`"${k}" absent de data/scrutin-state.json, une étape précédente n'a pas été faite`);
+      throw new Error(`"${k}" absent de ${path.relative(ROOT, STATE_FILE)}, une étape précédente n'a pas été faite`);
     }
   }
   return state;
@@ -129,7 +147,7 @@ export function isMain(metaUrl) {
 }
 
 // Liste d'émargement : fichier local de l'organisateur, jamais publié (data/ est dans .gitignore)
-const EMARGEMENT_FILE = path.join(ROOT, "data", "emargement.csv");
+const EMARGEMENT_FILE = path.join(DATA_DIR, "emargement.csv");
 
 export function loadEmargement() {
   if (!fs.existsSync(EMARGEMENT_FILE)) return [];
