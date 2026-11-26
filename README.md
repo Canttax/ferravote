@@ -69,12 +69,21 @@ npm run check        # vérifie la connexion au Testnet et le faucet
 
 `npm run check` se connecte (avec les serveurs de secours si besoin), affiche le dernier ledger validé et crée un wallet de test avec le faucet. Si ça échoue partout : partage de connexion, Codespaces, ou le [mode simulation](#mode-simulation-sans-réseau).
 
+### Si le faucet est en panne : le wallet banque
+
+Quand le faucet ne répond pas, `npm run wallets` (et donc `npm run demo`) crée quand même les wallets : un wallet déjà financé leur envoie des XRP par un simple `Payment` (10 XRP pour l'urne, 5 pour chaque électeur, environ 45 XRP au total). Le wallet banque est pris :
+
+1. dans `BANQUE_SEED` du `.env` (une ou plusieurs seeds séparées par des virgules, par exemple un wallet financé à la main sur la page faucet de xrpl.org) ;
+2. sinon dans le `wallets.json` créé par le Codespace XRPL Academy (`dev-training-june-2026`), s'il est cloné à côté de notre dépôt (cas du Codespace : `/workspaces/dev-training-june-2026/wallets.json`). On peut aussi donner un autre chemin avec `BANQUE_WALLETS_JSON`.
+
+`npm run check` affiche les wallets banque trouvés et leur solde.
+
 ### Problèmes fréquents
 
 | Symptôme | Ce qu'on fait |
 |---|---|
 | Timeout à la connexion | Le port 51233 est bloqué, les scripts passent sur les serveurs en 443. Sinon partage de connexion ou Codespaces |
-| `faucet saturé` | Toute la promo l'appelle en même temps. Le script réessaie 4 fois, sinon relancer un peu plus tard. On crée nos comptes une fois et on les réutilise via `.env` |
+| Le faucet ne répond pas (`fetch failed`) | Toute la promo l'appelle en même temps, ou le Testnet vient d'être réinitialisé. Le script réessaie, puis finance les wallets depuis un **wallet banque** déjà financé (voir plus bas). On crée nos comptes une fois et on les réutilise via `.env` |
 | Un compte ou un solde a disparu | Le Testnet a été réinitialisé : `npm run wallets -- --force` recrée tout |
 | Transaction envoyée mais rien ne change | On attend toujours la validation et on lit `meta.TransactionResult` (`tesSUCCESS` attendu), c'est ce que fait `submit()` dans `ledger/common.js` |
 
