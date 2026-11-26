@@ -8,6 +8,7 @@
     "node": ">=20"
   },
   "scripts": {
+    "check": "node scripts/check-testnet.js",
     "wallets": "node ledger/wallets.js",
     "create": "node ledger/create-ballot.js",
     "authorize": "node ledger/authorize.js",
