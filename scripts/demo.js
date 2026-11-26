@@ -68,7 +68,7 @@ run(async () => {
   await closeBallot();
 
   await etape("l'électeur 6 vote après la clôture (doit échouer)");
-  await vote("6", "L2");
+  await vote("6", "L2"); // nouvelle connexion, connect() attend que le serveur soit synchronisé
 
   await etape("dépouillement à partir du ledger");
   await tally();

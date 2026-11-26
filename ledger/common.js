@@ -70,13 +70,53 @@ export async function connect({ verbose = false } = {}) {
     const client = new xrpl.Client(url, { connectionTimeout: 10000 });
     try {
       await client.connect();
+      // Un serveur peut accepter la connexion sans être synchronisé (erreur notSynced ensuite)
+      const etat = await attendreSync(client);
+      if (!etat.ok) {
+        console.log(`  ${url} pas synchronisé (${etat.state}), serveur suivant`);
+        await client.disconnect().catch(() => {});
+        continue;
+      }
       if (verbose) console.log(`Connecté à ${url}`);
       return client;
     } catch {
       console.log(`  échec sur ${url}, serveur suivant`);
+      await client.disconnect().catch(() => {});
     }
   }
   throw new Error("aucun serveur Testnet ne répond (Wi-Fi qui bloque ? essayer un partage de connexion, Codespaces ou --sim)");
+}
+
+const SYNC_OK = ["full", "proposing", "validating"];
+
+// Attend jusqu'à ~15 s que le serveur soit synchronisé avec le réseau
+async function attendreSync(client, essais = 5) {
+  let state = "?";
+  for (let i = 0; i < essais; i++) {
+    try {
+      const info = (await client.request({ command: "server_info" })).result.info;
+      state = info.server_state;
+      if (SYNC_OK.includes(state) && info.validated_ledger) return { ok: true, state };
+    } catch {
+      // on réessaie
+    }
+    await new Promise((r) => setTimeout(r, 3000));
+  }
+  return { ok: false, state };
+}
+
+// Réessaie une requête si le serveur répond notSynced / tooBusy (ça arrive sur le Testnet)
+async function avecRetry(fn, essais = 4) {
+  for (let i = 1; ; i++) {
+    try {
+      return await fn();
+    } catch (err) {
+      const code = err?.data?.error;
+      if (i >= essais || !["notSynced", "tooBusy", "noNetwork", "noCurrent"].includes(code)) throw err;
+      console.log(`  serveur ${code}, nouvel essai dans ${2 * i} s...`);
+      await new Promise((r) => setTimeout(r, 2000 * i));
+    }
+  }
 }
 
 // ---------- Financement des wallets ----------
@@ -201,9 +241,9 @@ export function accountLink(address) {
 // Signe, envoie et attend la validation. Ne lève pas d'erreur si la transaction est
 // refusée : on veut pouvoir afficher le code (tecLOCKED, tecNO_AUTH...) pendant la démo.
 export async function submit(client, wallet, tx, { label = tx.TransactionType, quiet = false } = {}) {
-  const prepared = await client.autofill(tx);
+  const prepared = await avecRetry(() => client.autofill(tx));
   const signed = wallet.sign(prepared);
-  const sub = await client.request({ command: "submit", tx_blob: signed.tx_blob });
+  const sub = await avecRetry(() => client.request({ command: "submit", tx_blob: signed.tx_blob }));
   const prelim = sub.result.engine_result;
 
   let code = prelim;
@@ -229,9 +269,9 @@ async function waitValidated(client, hash, lastLedger) {
       const res = await client.request({ command: "tx", transaction: hash });
       if (res.result.validated) return res.result;
     } catch (err) {
-      if (err?.data?.error !== "txnNotFound") throw err;
+      if (!["txnNotFound", "notSynced", "tooBusy"].includes(err?.data?.error)) throw err;
     }
-    if ((await client.getLedgerIndex()) > lastLedger) return null;
+    if ((await avecRetry(() => client.getLedgerIndex())) > lastLedger) return null;
     await sleep(1000);
   }
 }
@@ -250,8 +290,9 @@ export async function run(main) {
   try {
     await main();
   } catch (err) {
-    console.error("Erreur :", err.message);
-    process.exitCode = 1;
+    console.error("Erreur :", err.data?.error_message || err.message);
+    // une connexion websocket restée ouverte bloquerait le process, on sort franchement
+    process.exit(1);
   }
 }
 

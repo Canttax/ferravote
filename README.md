@@ -171,13 +171,41 @@ npm run wallets -- --force    # nouveaux wallets via le faucet, .env réécrit
 npm run demo                  # nouveau scrutin complet
 ```
 
-Les adresses du dernier run sont dans `data/scrutin-state.json` (adresses publiques seulement). On note ici celles du scrutin de référence montré à la soutenance :
+Les adresses du dernier run sont dans `data/scrutin-state.json` (adresses publiques seulement).
 
-| Compte | Adresse |
-|---|---|
-| Urne (émetteur du jeton) | _à remplir après le run de référence_ |
-| ID du jeton VOTE | _à remplir_ |
-| Électeurs 1 à 6 | _voir `data/scrutin-state.json`_ |
+### Scrutin de référence (Testnet, 26 novembre 2026)
+
+Lancé avec `npm run demo` sur le Testnet réinitialisé le 25 novembre. Tout est vérifiable dans l'explorateur :
+
+| Compte | Adresse | |
+|---|---|---|
+| Urne (émetteur du jeton) | [`rEBtv2DGwZEBp6tcM3z7iRDBp2sLTCcwAz`](https://testnet.xrpl.org/accounts/rEBtv2DGwZEBp6tcM3z7iRDBp2sLTCcwAz) | |
+| ID du jeton VOTE | `00003F569BA143A81FEF8AE6D5E81242E45F6D00B00BB354` | création : [3BDC3B9407...](https://testnet.xrpl.org/transactions/3BDC3B94078D661FA5C81204065A02FEE1B7013D6BFFD35012637CDEC1DDF2BE) |
+| Électeur 1 | [`rJLdhDtrvMxgbiqmtCLjNq91cehraZpXCv`](https://testnet.xrpl.org/accounts/rJLdhDtrvMxgbiqmtCLjNq91cehraZpXCv) | vote L1 : [tx](https://testnet.xrpl.org/transactions/2162C94ECFA63CD7AE372101E6F1AEADC2F3E604FD6205E5E7F3C00A767428D5) |
+| Électeur 2 | [`rhWsKLnmomR84T7qcNwxqsKYVNBJycK8gV`](https://testnet.xrpl.org/accounts/rhWsKLnmomR84T7qcNwxqsKYVNBJycK8gV) | vote L2 : [tx](https://testnet.xrpl.org/transactions/8AEC3F54413A3798B941874EB26FE9F3A3261222929DDAD6A2119331D9FBAFFA) |
+| Électeur 3 | [`rfQwQsXyQf8aEVBcrUFJUq183UiQgBSLCv`](https://testnet.xrpl.org/accounts/rfQwQsXyQf8aEVBcrUFJUq183UiQgBSLCv) | vote L1 : [tx](https://testnet.xrpl.org/transactions/49E0B4EB0CC52C0EC07654F68440BC693841E16435F87C5C2422895231D7E6B1) |
+| Électeur 4 | [`rp9sfokjdyttkXfuB6zVMyhhWNX5VLdbZc`](https://testnet.xrpl.org/accounts/rp9sfokjdyttkXfuB6zVMyhhWNX5VLdbZc) | vote L3 : [tx](https://testnet.xrpl.org/transactions/B5EDC12A7DA543EEF30BBBDB1E2885EE3F2B7BE6ED3CA31140021D8C8A63E254) |
+| Électeur 5 | [`rG6Aua6z8cB32ZmZfB97vM8GsMRgA6aPPC`](https://testnet.xrpl.org/accounts/rG6Aua6z8cB32ZmZfB97vM8GsMRgA6aPPC) | vote L1 : [tx](https://testnet.xrpl.org/transactions/47F29C719CFA41F33A813E6A7F760E9B50B8A9DADB679F139C225652448E680A) |
+| Électeur 6 | [`rBpbAmR5Wwv4M2A6tNZ9q9RB19ENDZ5fvr`](https://testnet.xrpl.org/accounts/rBpbAmR5Wwv4M2A6tNZ9q9RB19ENDZ5fvr) | n'a pas voté |
+| Intrus (jamais autorisé) | [`rpfVDoYTWUnnzmSxNHUiDfnmGkT9hNZNcJ`](https://testnet.xrpl.org/accounts/rpfVDoYTWUnnzmSxNHUiDfnmGkT9hNZNcJ) | |
+
+Tentatives de fraude refusées par le ledger :
+
+| Tentative | Résultat | Transaction |
+|---|---|---|
+| L'électeur 1 revote | `tecPATH_PARTIAL` (plus de jeton) | [1BFC9E23FB...](https://testnet.xrpl.org/transactions/1BFC9E23FBD91197318630735742DA159E0D62AF640B4944616B83146DBEB16E) |
+| L'électeur 6 donne son jeton à l'électeur 5 | `tecNO_AUTH` (jeton non transférable) | [B772026F32...](https://testnet.xrpl.org/transactions/B772026F32226003EF2F75EAAF733A55CC50C7C0E3BAFDF90E57597E55096F4D) |
+| L'intrus vote | `tecNO_AUTH` (pas autorisé) | [9919900436...](https://testnet.xrpl.org/transactions/991990043665AEFC1F48102C963B06DAFECD96AAEDB98BD99EDF2BF08189C848) |
+
+Clôture au ledger 16283 : [A8662BA2A9...](https://testnet.xrpl.org/transactions/A8662BA2A9D0C7024357ED046F6A6EFC7A7AC370D14AFACEA44CEBE0FEF3E8DB).
+
+Dépouillement (`npm run tally`) : **L1 Liste Horizon 3 voix (60 %), L2 Liste Phénix 1 voix (20 %), L3 Liste Kraken 1 voix (20 %)**, 6 autorisés, 5 votants, 0 nul. Pour recompter soi-même :
+
+```bash
+npm run tally -- --urne rEBtv2DGwZEBp6tcM3z7iRDBp2sLTCcwAz --mpt 00003F569BA143A81FEF8AE6D5E81242E45F6D00B00BB354
+```
+
+Pendant ce run, le vote après clôture (étape 10) n'a pas pu partir : le serveur a répondu `notSynced`. Depuis, `connect()` attend que le serveur soit synchronisé et les requêtes sont réessayées (voir l'issue sur la clôture).
 
 Les seeds correspondantes ne sont **pas** dans le dépôt. Pour demander de l'aide au mentor on partage les adresses, les hash de transaction et les codes de résultat, jamais une seed.
 
