@@ -2,7 +2,8 @@
 //   npm run demo                 enchaîne tout
 //   npm run demo -- --pas-a-pas  attend Entrée entre chaque étape (pour la soutenance)
 import readline from "node:readline/promises";
-import { connect, loadEmargement, run } from "../ledger/common.js";
+import { connect, electeurWallets, loadEmargement, requireState, submit, run } from "../ledger/common.js";
+import { mptPaymentTx } from "../ledger/tx.js";
 import { createWallets } from "../ledger/wallets.js";
 import { createBallot } from "../ledger/create-ballot.js";
 import { authorizeVoters } from "../ledger/authorize.js";
@@ -50,6 +51,13 @@ run(async () => {
 
   await etape("l'électeur 1 essaie de voter une deuxième fois (doit échouer)");
   await vote("1", "L2", { client });
+
+  await etape("l'électeur 6 essaie de donner son jeton à l'électeur 5, achat de voix (doit échouer)");
+  {
+    const { mptId } = requireState("mptId");
+    const [e5, e6] = [electeurWallets()[4], electeurWallets()[5]];
+    await submit(client, e6, mptPaymentTx(e6.address, e5.address, mptId), { label: "transfert électeur 6 -> électeur 5" });
+  }
 
   await etape("un wallet non autorisé essaie de voter (doit échouer)");
   await vote("intrus", "L3", { client });
