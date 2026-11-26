@@ -17,7 +17,7 @@ Règles appliquées au dépouillement (`tally/core.js`) :
 - un bulletin validé après le ledger de clôture (`MPTokenIssuanceSet` avec `tfMPTLock`) est ignoré ;
 - un code qui ne correspond à aucune liste donne un bulletin nul.
 
-Normalement le ledger empêche déjà le double vote, le vote non autorisé et le vote après clôture. Le script refait quand même les contrôles pour qu'un observateur n'ait pas à faire confiance à notre configuration du jeton.
+Le ledger empêche déjà le double vote et le vote non autorisé. Par contre il **n'empêche pas** le vote après clôture : on l'a vérifié sur le Testnet, un jeton verrouillé peut toujours être renvoyé à l'émetteur, et voter c'est justement renvoyer le jeton à l'urne. Pour ce cas c'est donc le dépouillement qui fait la règle, à partir du numéro de ledger de la clôture (public et immuable). Le script refait aussi les autres contrôles pour qu'un observateur n'ait pas à faire confiance à notre configuration du jeton.
 
 ## Prévu pour le commit-reveal (pas encore codé)
 

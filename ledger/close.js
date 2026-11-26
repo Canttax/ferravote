@@ -1,4 +1,7 @@
-// Clôture : l'urne verrouille le jeton, plus aucun jeton ne peut circuler donc plus aucun vote
+// Clôture : l'urne verrouille le jeton (MPTokenIssuanceSet tfMPTLock).
+// Attention, testé sur le Testnet le 26/11 : un détenteur peut ENCORE renvoyer son jeton à l'urne
+// après le verrou. Ce qui fait foi, c'est le numéro de ledger de cette transaction : le dépouillement
+// écarte tout bulletin validé après.
 import { connect, requireState, saveState, submit, urneWallet, isMain, run } from "./common.js";
 import { lockTx } from "./tx.js";
 

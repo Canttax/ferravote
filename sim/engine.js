@@ -243,13 +243,17 @@ export class Engine {
       throw new TxError("tecNO_AUTH", "jeton non transférable entre détenteurs");
     }
 
-    const check = (holder) => {
+    // Comme sur le vrai Testnet (vérifié le 26/11) : un jeton verrouillé peut toujours
+    // être RENVOYÉ à l'émetteur. Le verrou bloque seulement les envois de l'émetteur et entre détenteurs.
+    const check = (holder, versEmetteur = false) => {
       const tok = this.mptoken(id, holder);
       if (!tok) throw new TxError(iss.Flags & lsfMPTRequireAuth ? "tecNO_AUTH" : "tecOBJECT_NOT_FOUND", `${holder} ne détient pas ce jeton`);
       if ((iss.Flags & lsfMPTRequireAuth) && !(tok.Flags & lsfMPTAuthorized)) {
         throw new TxError("tecNO_AUTH", `${holder} n'est pas autorisé par l'émetteur`);
       }
-      if ((iss.Flags & lsfMPTLocked) || (tok.Flags & lsfMPTLocked)) throw new TxError("tecLOCKED", "jeton verrouillé");
+      if (!versEmetteur && ((iss.Flags & lsfMPTLocked) || (tok.Flags & lsfMPTLocked))) {
+        throw new TxError("tecLOCKED", "jeton verrouillé");
+      }
       return tok;
     };
 
@@ -260,7 +264,7 @@ export class Engine {
       tok.MPTAmount = String(BigInt(tok.MPTAmount) + v);
       iss.OutstandingAmount = String(BigInt(iss.OutstandingAmount) + v);
     } else {
-      const src = check(tx.Account);
+      const src = check(tx.Account, toIssuer);
       if (BigInt(src.MPTAmount) < v) throw new TxError("tecPATH_PARTIAL", "solde de jeton insuffisant");
       src.MPTAmount = String(BigInt(src.MPTAmount) - v);
       if (toIssuer) {

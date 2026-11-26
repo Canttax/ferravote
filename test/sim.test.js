@@ -103,10 +103,20 @@ test("plafond d'émission", () => {
   assert.equal(send(urne, mptPaymentTx(urne.address, e.address, mptId)).code, "tecPATH_PARTIAL");
 });
 
-test("vote refusé après la clôture", () => {
+test("après la clôture : le ledger accepte encore le renvoi à l'urne (comme le Testnet)", () => {
   const { send, urne, electeurs, mptId } = scrutin();
   assert.equal(send(urne, lockTx(urne.address, mptId)).code, "tesSUCCESS");
-  assert.equal(send(electeurs[0], voteTx(electeurs[0].address, urne.address, mptId, "L1")).code, "tecLOCKED");
+  // renvoi à l'émetteur toujours possible, c'est le dépouillement qui l'écarte (ledger > clôture)
+  assert.equal(send(electeurs[0], voteTx(electeurs[0].address, urne.address, mptId, "L1")).code, "tesSUCCESS");
+});
+
+test("après la clôture : l'urne ne peut plus distribuer, et pas de transfert", () => {
+  const { send, fund, urne, electeurs, mptId } = scrutin(3);
+  const e = fund();
+  send(e, holderOptInTx(e.address, mptId));
+  send(urne, issuerAuthorizeTx(urne.address, e.address, mptId));
+  send(urne, lockTx(urne.address, mptId));
+  assert.equal(send(urne, mptPaymentTx(urne.address, e.address, mptId)).code, "tecLOCKED");
 });
 
 test("un tec consomme les frais mais ne change rien d'autre", () => {

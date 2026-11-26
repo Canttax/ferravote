@@ -20,7 +20,7 @@ Avec FerraVote :
 - l'urne (compte de l'organisateur) crée un jeton **MPT "VOTE"** avec autorisation obligatoire, **sans droit de transfert** et un plafond égal au nombre d'inscrits ;
 - chaque électeur inscrit sur la liste d'émargement (hors chaîne) est autorisé puis reçoit **1 jeton** ;
 - pour voter il **renvoie son jeton à l'urne** avec le code de sa liste dans un Memo, son solde passe à 0 donc il ne peut pas revoter ;
-- à la clôture l'urne **verrouille** le jeton ;
+- à la clôture l'urne **verrouille** le jeton, ce qui fixe publiquement le ledger de clôture ;
 - **n'importe qui peut recompter** en relisant l'historique public de l'urne (script `tally` ou page Résultats).
 
 Pas de smart contract, uniquement des fonctions natives de XRPL : `MPTokenIssuanceCreate`, `MPTokenAuthorize`, `Payment` avec Memos, `MPTokenIssuanceSet`.
@@ -104,7 +104,7 @@ Le script enchaîne tout le scénario sur le Testnet (compter 2 à 3 minutes, su
 7. l'électeur 6 essaie de donner son jeton à l'électeur 5 (achat de voix) : **refusé**, le jeton n'est pas transférable ;
 8. l'intrus essaie de voter : **refusé**, il n'a jamais été autorisé ;
 9. clôture du scrutin (verrouillage du jeton) ;
-10. l'électeur 6 essaie de voter après la clôture : normalement **refusé** par le ledger (`tecLOCKED`), et de toute façon ignoré au dépouillement car validé après le ledger de clôture ;
+10. l'électeur 6 vote après la clôture : le ledger **l'accepte** (un jeton verrouillé peut toujours revenir à l'émetteur), mais le dépouillement **l'écarte** car il est validé après le ledger de clôture ;
 11. dépouillement : L1 3 voix, L2 1 voix, L3 1 voix.
 
 Chaque transaction affiche son lien vers l'explorateur.
@@ -205,7 +205,9 @@ Dépouillement (`npm run tally`) : **L1 Liste Horizon 3 voix (60 %), L2 Liste Ph
 npm run tally -- --urne rEBtv2DGwZEBp6tcM3z7iRDBp2sLTCcwAz --mpt 00003F569BA143A81FEF8AE6D5E81242E45F6D00B00BB354
 ```
 
-Pendant ce run, le vote après clôture (étape 10) n'a pas pu partir : le serveur a répondu `notSynced`. Depuis, `connect()` attend que le serveur soit synchronisé et les requêtes sont réessayées (voir l'issue sur la clôture).
+Vote après clôture (électeur 6, relancé à part) : `tesSUCCESS` côté ledger, [0A63DC0F52...](https://testnet.xrpl.org/transactions/0A63DC0F52686E5E9281EDDB609CC8C9F62E07E99BA0F7B0E265C2FADC7D0C3C), mais marqué **rejeté (après la clôture)** au dépouillement. Le résultat ne change pas.
+
+On pensait que le verrouillage du MPT bloquerait ce vote (`tecLOCKED`). Le test sur le Testnet montre que non : un jeton verrouillé peut toujours être renvoyé à l'émetteur. La règle de clôture repose donc sur le numéro de ledger de la transaction de clôture, que n'importe qui peut vérifier. C'est dans nos limites et dans l'issue sur la clôture.
 
 Les seeds correspondantes ne sont **pas** dans le dépôt. Pour demander de l'aide au mentor on partage les adresses, les hash de transaction et les codes de résultat, jamais une seed.
 
@@ -254,6 +256,7 @@ Aucune donnée personnelle ne part sur le ledger, seulement des adresses et des 
 ## Limites
 
 - **Secret du vote** : pseudonymat seulement. Le Memo est en clair et l'organisateur sait quelle adresse appartient à qui. Le hash de transaction permet aussi de prouver son vote à quelqu'un, donc l'achat de voix reste possible. Piste prévue : commit-reveal (voir [docs/format-memo.md](docs/format-memo.md)).
+- **Clôture** : le verrou du MPT n'empêche pas un bulletin tardif d'arriver sur le ledger. Il est écarté au dépouillement grâce au numéro de ledger de clôture (public), pas refusé par le ledger.
 - **Inscription centralisée** : l'organisateur pourrait autoriser de fausses adresses. C'est visible (nombre d'adresses autorisées sur le ledger comparé au nombre d'inscrits) mais pas empêché.
 - **Clés** : une seed perdue = un vote perdu. Pour le PoC les seeds sont générées par script.
 - **Réserve XRP** : chaque électeur doit avoir un compte financé. Gratuit sur Testnet, pas à grande échelle.

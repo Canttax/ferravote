@@ -63,12 +63,12 @@ Un MPT est un jeton émis par un compte, avec ses règles fixées une fois pour 
 | `MPTokenAuthorize` sans `Holder` | détenteur | "je veux détenir ce jeton", crée l'objet MPToken (réserve 0,2 XRP) |
 | `MPTokenAuthorize` avec `Holder` | émetteur | valide le détenteur (nécessaire si le jeton a `tfMPTRequireAuth`) |
 | `Payment` avec `Amount: { mpt_issuance_id, value }` | tous | envoie des jetons |
-| `MPTokenIssuanceSet` avec `tfMPTLock` | émetteur | verrouille le jeton, plus rien ne circule |
+| `MPTokenIssuanceSet` avec `tfMPTLock` | émetteur | verrouille le jeton : l'émetteur ne peut plus en envoyer et les détenteurs ne peuvent plus échanger, mais un détenteur peut **toujours le renvoyer à l'émetteur** |
 
 Les flags qu'on utilise pour le jeton VOTE :
 
 - `tfMPTRequireAuth` : l'urne doit valider chaque adresse, sinon impossible de recevoir le jeton ;
-- `tfMPTCanLock` : l'urne pourra verrouiller le jeton à la clôture ;
+- `tfMPTCanLock` : l'urne pourra verrouiller le jeton à la clôture. Ça ne bloque pas les bulletins tardifs (renvoi à l'émetteur toujours permis, vérifié sur le Testnet), mais ça fixe publiquement le ledger de clôture ;
 - **pas** de `tfMPTCanTransfer` : un détenteur ne peut envoyer son jeton qu'à l'émetteur. On ne peut donc pas donner ou vendre sa voix à un autre électeur, il ne reste qu'une destination possible, l'urne ;
 - `MaximumAmount` = nombre d'inscrits, `AssetScale` = 0 (pas de demi-voix).
 
@@ -83,7 +83,7 @@ Pourquoi pas une trust line ? Avec une trust line classique, les jetons peuvent 
 | Inscrire | `npm run authorize` | 2 × `MPTokenAuthorize` par électeur | liste des adresses autorisées publique |
 | Distribuer | `npm run distribute` | `Payment` 1 VOTE | pas plus de jetons que d'inscrits |
 | Voter | `npm run vote -- 1 L2` | `Payment` électeur → urne + Memo | 1 seul vote (solde 0 après), pas de transfert |
-| Clôturer | `npm run close` | `MPTokenIssuanceSet` lock | plus aucun bulletin après |
+| Clôturer | `npm run close` | `MPTokenIssuanceSet` lock | ledger de clôture public, bulletins après écartés au dépouillement |
 | Dépouiller | `npm run tally` | lecture `account_tx` | recalculable par tout le monde |
 
 ## 4. Le mode simulation

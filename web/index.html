@@ -85,7 +85,7 @@
         <li>Chaque électeur inscrit demande le jeton, l'organisateur valide son adresse après vérification de la liste d'émargement (hors chaîne).</li>
         <li>L'urne envoie 1 VOTE à chaque adresse autorisée.</li>
         <li>Pour voter, l'électeur renvoie son jeton à l'urne avec le code de sa liste dans le Memo. Son solde tombe à 0, il ne peut plus revoter.</li>
-        <li>À la clôture l'urne verrouille le jeton : plus aucun bulletin ne passe.</li>
+        <li>À la clôture l'urne verrouille le jeton. Le numéro de ledger de cette transaction est public : tout bulletin validé après est écarté au dépouillement.</li>
         <li>N'importe qui recompte en relisant l'historique de l'urne.</li>
       </ol>
       <h3>Limites assumées</h3>
