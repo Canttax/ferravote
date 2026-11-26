@@ -61,7 +61,7 @@ Les seeds générées restent dans le `.env` du Codespace, qui n'est pas commit�
 Prérequis : Node.js LTS (20 ou plus), npm, Git.
 
 ```bash
-git clone <url du dépôt>
+git clone https://github.com/Canttax/ferravote.git
 cd ferravote
 npm install
 npm run check        # vérifie la connexion au Testnet et le faucet
