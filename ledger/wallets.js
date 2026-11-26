@@ -3,7 +3,7 @@
 //   npm run wallets -- --force
 import fs from "node:fs";
 import path from "node:path";
-import { ROOT, ENV_FILE, SIM, connect, loadScrutin, saveEmargement, saveState, accountLink, isMain, run } from "./common.js";
+import { ROOT, ENV_FILE, SIM, connect, fundWallet, loadScrutin, saveEmargement, saveState, accountLink, isMain, run } from "./common.js";
 
 // Noms fictifs pour la liste d'émargement de la démo
 const NOMS = ["Alice Martin", "Bilal Haddad", "Chloé Bernard", "David Nguyen", "Emma Lefèvre",
@@ -17,11 +17,11 @@ export async function createWallets({ force = false } = {}) {
     return;
   }
   const { nbElecteurs } = loadScrutin();
-  const client = await connect();
+  const client = await connect({ verbose: true });
 
   console.log(SIM ? "Financement des comptes par le faucet simulé..." : "Financement des comptes via le faucet Testnet (ça peut prendre une minute)...");
   const fund = async (label) => {
-    const { wallet, balance } = await client.fundWallet();
+    const { wallet, balance } = await fundWallet(client);
     console.log(`  ${label.padEnd(12)} ${wallet.address}  ${balance} XRP`);
     return wallet;
   };

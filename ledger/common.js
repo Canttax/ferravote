@@ -24,7 +24,16 @@ if (SIM) {
 }
 
 const WEB_PORT = Number(process.env.PORT) || 3000;
-export const NETWORK_URL = SIM ? "simulation locale" : process.env.XRPL_NETWORK || "wss://s.altnet.rippletest.net:51233";
+// Serveurs Testnet essayés dans l'ordre (fiche "Accès au XRPL Testnet" du hackathon).
+// Le Wi-Fi de l'école peut bloquer le port 51233, les deux suivants sont sur le port 443.
+export const TESTNET_SERVERS = (
+  process.env.XRPL_NETWORK || "wss://s.altnet.rippletest.net:51233,wss://testnet.xrpl-labs.com,wss://testnet.honeycluster.io"
+)
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+export const FAUCET_HOST = process.env.XRPL_FAUCET || "faucet.altnet.rippletest.net";
+export const NETWORK_URL = SIM ? "simulation locale" : TESTNET_SERVERS[0];
 export const EXPLORER = SIM
   ? `http://localhost:${WEB_PORT}/web/explorer.html`
   : process.env.XRPL_EXPLORER || "https://testnet.xrpl.org";
@@ -50,10 +59,39 @@ export function saveState(patch) {
   return state;
 }
 
-export async function connect() {
-  const client = SIM ? new SimClient(path.join(DATA_DIR, "ledger.json")) : new xrpl.Client(NETWORK_URL);
-  await client.connect();
-  return client;
+export async function connect({ verbose = false } = {}) {
+  if (SIM) {
+    const client = new SimClient(path.join(DATA_DIR, "ledger.json"));
+    await client.connect();
+    return client;
+  }
+  // On essaie chaque serveur, le premier qui répond gagne
+  for (const url of TESTNET_SERVERS) {
+    const client = new xrpl.Client(url, { connectionTimeout: 10000 });
+    try {
+      await client.connect();
+      if (verbose) console.log(`Connecté à ${url}`);
+      return client;
+    } catch {
+      console.log(`  échec sur ${url}, serveur suivant`);
+    }
+  }
+  throw new Error("aucun serveur Testnet ne répond (Wi-Fi qui bloque ? essayer un partage de connexion, Codespaces ou --sim)");
+}
+
+// client.fundWallet() avec quelques essais : le faucet sature quand toute la promo l'appelle
+export async function fundWallet(client, essais = 4) {
+  if (SIM) return client.fundWallet();
+  for (let i = 1; ; i++) {
+    try {
+      return await client.fundWallet(null, { faucetHost: FAUCET_HOST, usageContext: "ferravote" });
+    } catch (err) {
+      if (i >= essais) throw new Error(`faucet indisponible après ${essais} essais (${err.message})`);
+      const attente = 3 * i;
+      console.log(`  faucet saturé, nouvel essai dans ${attente} s...`);
+      await new Promise((r) => setTimeout(r, attente * 1000));
+    }
+  }
 }
 
 export function urneWallet() {

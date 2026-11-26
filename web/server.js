@@ -3,7 +3,7 @@
 import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
-import { ROOT, DATA_DIR, SIM, MODE, NETWORK_URL, EXPLORER, loadScrutin, loadState } from "../ledger/common.js";
+import { ROOT, DATA_DIR, SIM, MODE, NETWORK_URL, TESTNET_SERVERS, EXPLORER, loadScrutin, loadState } from "../ledger/common.js";
 import { SimLedgerStore, rpc } from "../sim/client.js";
 
 // En mode simulation le serveur héberge aussi le ledger simulé (même fichier que les scripts)
@@ -71,7 +71,7 @@ const server = http.createServer((req, res) => {
   if (url === "/api/config") {
     // Uniquement des infos publiques (elles sont de toute façon lisibles sur le ledger)
     const { urne = null, mptId = null } = loadState();
-    const body = { mode: MODE, scrutin: loadScrutin(), urne, mptId, network: NETWORK_URL, explorer: EXPLORER };
+    const body = { mode: MODE, scrutin: loadScrutin(), urne, mptId, network: NETWORK_URL, servers: SIM ? [] : TESTNET_SERVERS, explorer: SIM ? "/web/explorer.html" : EXPLORER };
     return send(res, 200, JSON.stringify(body), "application/json; charset=utf-8");
   }
 

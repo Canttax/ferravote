@@ -10,9 +10,24 @@ let client = null;
 // ---------- utilitaires ----------
 async function getClient() {
   if (client && client.isConnected()) return client;
-  client = config.mode === "simulation" ? new RemoteSimClient() : new xrpl.Client(config.network);
-  await client.connect();
-  return client;
+  if (config.mode === "simulation") {
+    client = new RemoteSimClient();
+    await client.connect();
+    return client;
+  }
+  // même logique que côté Node : on passe au serveur suivant si le premier ne répond pas
+  for (const url of config.servers) {
+    const c = new xrpl.Client(url, { connectionTimeout: 10000 });
+    try {
+      await c.connect();
+      client = c;
+      $("reseau").textContent = url;
+      return client;
+    } catch {
+      console.log("échec sur", url);
+    }
+  }
+  throw new Error("aucun serveur Testnet ne répond");
 }
 
 const sim = () => config.mode === "simulation";
