@@ -3,7 +3,11 @@
 import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
-import { ROOT, NETWORK_URL, EXPLORER, loadScrutin, loadState } from "../ledger/common.js";
+import { ROOT, DATA_DIR, SIM, MODE, NETWORK_URL, EXPLORER, loadScrutin, loadState } from "../ledger/common.js";
+import { SimLedgerStore, rpc } from "../sim/client.js";
+
+// En mode simulation le serveur héberge aussi le ledger simulé (même fichier que les scripts)
+const store = SIM ? new SimLedgerStore(path.join(DATA_DIR, "ledger.json")) : null;
 
 const PORT = Number(process.env.PORT) || 3000;
 const TYPES = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".png": "image/png", ".svg": "image/svg+xml" };
@@ -27,16 +31,47 @@ function serveFile(res, file) {
   });
 }
 
+function readJson(req) {
+  return new Promise((resolve, reject) => {
+    let body = "";
+    req.on("data", (c) => {
+      body += c;
+      if (body.length > 1e6) req.destroy();
+    });
+    req.on("end", () => {
+      try {
+        resolve(JSON.parse(body || "{}"));
+      } catch (err) {
+        reject(err);
+      }
+    });
+  });
+}
+
+// API du ledger simulé : même requêtes que rippled (account_tx, submit...)
+async function simApi(req, res, url) {
+  const json = (status, body) => send(res, status, JSON.stringify(body), "application/json; charset=utf-8");
+  try {
+    const body = await readJson(req);
+    if (url === "/sim/autofill") return json(200, store.run((engine) => engine.autofill(body)));
+    return json(200, { result: rpc(store, body) });
+  } catch (err) {
+    json(200, { error: err.data?.error || "simError", error_message: err.message });
+  }
+}
+
 const server = http.createServer((req, res) => {
   const url = decodeURIComponent(new URL(req.url, "http://localhost").pathname);
 
   if (url === "/") return serveFile(res, path.join(ROOT, "web", "index.html"));
   if (url === "/vendor/xrpl.js") return serveFile(res, XRPL_BUNDLE);
 
+  if (SIM && req.method === "POST" && url.startsWith("/sim/")) return simApi(req, res, url);
+
   if (url === "/api/config") {
     // Uniquement des infos publiques (elles sont de toute façon lisibles sur le ledger)
     const { urne = null, mptId = null } = loadState();
-    const body = { scrutin: loadScrutin(), urne, mptId, network: NETWORK_URL, explorer: EXPLORER };
+    const body = { mode: MODE, scrutin: loadScrutin(), urne, mptId, network: NETWORK_URL, explorer: EXPLORER };
     return send(res, 200, JSON.stringify(body), "application/json; charset=utf-8");
   }
 
@@ -50,5 +85,6 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`Interface FerraVote : http://localhost:${PORT}`);
+  console.log(`Interface FerraVote (${MODE}) : http://localhost:${PORT}`);
+  if (SIM) console.log(`Explorateur du ledger simulé : http://localhost:${PORT}/web/explorer.html`);
 });

@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Explorateur du ledger simulé</title>
+  <link rel="stylesheet" href="/web/style.css">
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <h1>Explorateur (ledger simulé)</h1>
+      <p>Équivalent local de testnet.xrpl.org, pour le mode simulation. <a href="/">retour à FerraVote</a></p>
+    </div>
+  </header>
+  <main class="wrap">
+    <div class="recherche">
+      <input id="q" placeholder="Adresse r... ou hash de transaction">
+      <button id="go">Chercher</button>
+      <button id="recent" class="secondaire">Dernières transactions</button>
+    </div>
+    <section class="panel active" id="contenu">Chargement...</section>
+  </main>
+  <script type="module" src="/web/explorer.js"></script>
+</body>
+</html>

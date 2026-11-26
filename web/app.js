@@ -1,6 +1,7 @@
 // Interface FerraVote (navigateur). xrpl.js est chargé en global par /vendor/xrpl.js
 import { encodeMemo } from "/tally/memo.js";
 import { tallyFromLedger } from "/tally/core.js";
+import { RemoteSimClient } from "/web/sim-client.js";
 
 const $ = (id) => document.getElementById(id);
 let config = null;
@@ -9,13 +10,14 @@ let client = null;
 // ---------- utilitaires ----------
 async function getClient() {
   if (client && client.isConnected()) return client;
-  client = new xrpl.Client(config.network);
+  client = config.mode === "simulation" ? new RemoteSimClient() : new xrpl.Client(config.network);
   await client.connect();
   return client;
 }
 
-const txUrl = (hash) => `${config.explorer}/transactions/${hash}`;
-const accUrl = (addr) => `${config.explorer}/accounts/${addr}`;
+const sim = () => config.mode === "simulation";
+const txUrl = (hash) => (sim() ? `${config.explorer}#tx=${hash}` : `${config.explorer}/transactions/${hash}`);
+const accUrl = (addr) => (sim() ? `${config.explorer}#account=${addr}` : `${config.explorer}/accounts/${addr}`);
 const court = (s) => (s ? `${s.slice(0, 6)}...${s.slice(-4)}` : "");
 
 function etat(el, texte, type = "") {
@@ -159,7 +161,8 @@ function afficherResultats(r) {
 async function init() {
   config = await (await fetch("/api/config")).json();
   $("titre-scrutin").textContent = config.scrutin.titre;
-  $("reseau").textContent = config.network;
+  $("reseau").textContent = sim() ? "ledger simulé en local (mode simulation)" : config.network;
+  if (sim()) $("lien-explorateur").hidden = false;
   $("urne").value = config.urne || "";
   $("mpt").value = config.mptId || "";
 

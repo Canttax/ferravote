@@ -63,3 +63,14 @@ footer { color: var(--gris); font-size: 12px; padding-bottom: 30px; }
   .grille2, .chiffres { grid-template-columns: 1fr 1fr; }
   .barre { grid-template-columns: 1fr; }
 }
+header a { color: #cfe3ff; margin-left: 8px; }
+pre { background: #f3f5f7; padding: 12px; border-radius: 6px; overflow-x: auto; font-size: 12px; }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 12px; font-weight: 600; }
+.badge.ok { background: #dff3ec; color: var(--accent); }
+.badge.ko { background: #fbe3e1; color: var(--rouge); }
+dl.fiche { display: grid; grid-template-columns: 180px 1fr; gap: 6px 12px; font-size: 14px; }
+dl.fiche dt { color: var(--gris); }
+dl.fiche dd { margin: 0; word-break: break-all; }
+.recherche { display: flex; gap: 8px; margin: 16px 0; }
+.recherche input { flex: 1; }
+.recherche button { margin-top: 0; }
