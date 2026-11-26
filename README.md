@@ -63,16 +63,31 @@ Le script enchaîne tout le scénario sur le Testnet (compter 2 à 3 minutes, su
 4. distribution de 1 VOTE à chacun ;
 5. 5 votes : L1, L2, L1, L3, L1 (l'électeur 6 ne vote pas tout de suite) ;
 6. l'électeur 1 essaie de revoter : **refusé par le ledger**, il n'a plus de jeton ;
-7. l'intrus essaie de voter : **refusé**, il n'a jamais été autorisé ;
-8. clôture du scrutin (verrouillage du jeton) ;
-9. l'électeur 6 essaie de voter après la clôture : normalement **refusé** par le ledger (`tecLOCKED`), et de toute façon ignoré au dépouillement car validé après le ledger de clôture ;
-10. dépouillement : L1 3 voix, L2 1 voix, L3 1 voix.
+7. l'électeur 6 essaie de donner son jeton à l'électeur 5 (achat de voix) : **refusé**, le jeton n'est pas transférable ;
+8. l'intrus essaie de voter : **refusé**, il n'a jamais été autorisé ;
+9. clôture du scrutin (verrouillage du jeton) ;
+10. l'électeur 6 essaie de voter après la clôture : normalement **refusé** par le ledger (`tecLOCKED`), et de toute façon ignoré au dépouillement car validé après le ledger de clôture ;
+11. dépouillement : L1 3 voix, L2 1 voix, L3 1 voix.
 
 Chaque transaction affiche son lien vers l'explorateur.
 
 Pour la soutenance on utilise `npm run demo -- --pas-a-pas`, qui attend Entrée entre chaque étape.
 
 Les seeds sont écrites dans `.env` et l'état public du scrutin (adresse de l'urne, ID du jeton) dans `data/scrutin-state.json`. Si `.env` contient déjà des seeds, `npm run demo` les réutilise et ouvre un nouveau scrutin.
+
+## Mode simulation (sans réseau)
+
+Pas d'accès au Testnet, réseau de l'école bloqué ou faucet en panne ? Le dossier `sim/` contient un ledger XRPL simulé en local, avec les mêmes règles pour nos transactions (signatures vérifiées, réserve, frais, MPT avec autorisation, pas de transfert, verrouillage, mêmes codes de résultat).
+
+```bash
+npm run demo:sim      # même scénario, en moins d'une seconde
+npm run web:sim       # interface + explorateur local (http://localhost:3000/web/explorer.html)
+npm run sim:reset     # repartir d'un ledger vide
+```
+
+Chaque script accepte aussi `--sim` (`npm run vote -- 1 L2 --sim`), ou on peut mettre `XRPL_MODE=simulation` dans `.env`. Les wallets et l'état de la simulation sont dans `data/sim/`, séparés de ceux du Testnet.
+
+Le dépouillement et l'interface sont exactement le même code dans les deux modes. La simulation sert à développer et à répéter. La démo officielle se fait sur le Testnet, parce que seules les transactions du vrai réseau sont vérifiables par le jury dans l'explorateur. Détails et notions XRPL dans [docs/guide-xrpl.md](docs/guide-xrpl.md).
 
 ## Lancer les étapes une par une
 
@@ -126,7 +141,7 @@ Les seeds correspondantes ne sont **pas** dans le dépôt.
 npm test
 ```
 
-Tests hors ligne (pas besoin du réseau) : forme des transactions vérifiée avec `xrpl.validate`, encodage des Memos et dépouillement sur un faux historique (double vote, adresse non autorisée, vote après clôture, bulletin nul).
+Tests hors ligne (pas besoin du réseau) : forme des transactions vérifiée avec `xrpl.validate`, encodage des Memos, dépouillement sur un faux historique (double vote, adresse non autorisée, vote après clôture, bulletin nul) et règles du ledger simulé (signature, réserve, plafond, transfert interdit, verrouillage).
 
 ## Organisation du code
 
@@ -141,9 +156,11 @@ tally/
   core.js        dépouillement à partir de account_tx (partagé Node / navigateur)
   cli.js         npm run tally
 web/             interface (HTML/JS sans framework) + petit serveur statique
+  explorer.html  mini explorateur pour le mode simulation
+sim/             ledger XRPL simulé (moteur, API façon rippled, client compatible xrpl.Client)
 scripts/demo.js  scénario complet
 config/scrutin.json   titre du scrutin, listes, nombre d'inscrits
-docs/            format des Memos
+docs/            format des Memos, guide des notions XRPL
 test/            tests node:test
 ```
 
