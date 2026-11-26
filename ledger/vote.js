@@ -21,7 +21,7 @@ export async function vote(qui, choix, { client: shared } = {}) {
 }
 
 if (isMain(import.meta.url)) {
-  const [qui, choix] = process.argv.slice(2);
+  const [qui, choix] = process.argv.slice(2).filter((a) => !a.startsWith("--"));
   if (!qui || !choix) {
     console.log("usage : npm run vote -- <numéro électeur | intrus> <code liste>");
     process.exit(1);
