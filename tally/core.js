@@ -45,6 +45,14 @@ function mptAmount(entry) {
   return null;
 }
 
+// Un bulletin est en retard s'il est dans un ledger après celui de la clôture,
+// ou dans le même ledger mais placé après elle (TransactionIndex = ordre d'application)
+export function apresCloture(e, cloture) {
+  if (!cloture) return false;
+  if (e.ledger !== cloture.ledger) return e.ledger > cloture.ledger;
+  return (e.meta.TransactionIndex ?? 0) > cloture.index;
+}
+
 function order(a, b) {
   if (a.ledger !== b.ledger) return a.ledger - b.ledger;
   return (a.meta.TransactionIndex ?? 0) - (b.meta.TransactionIndex ?? 0);
@@ -88,7 +96,7 @@ export function countVotes({ entries, urne, mptId, listes }) {
 
     if (tx.TransactionType === "MPTokenIssuanceSet" && tx.Account === urne && sameId(tx.MPTokenIssuanceID)) {
       if (((tx.Flags ?? 0) & LOCK_FLAG) && !cloture) {
-        cloture = { hash: e.hash, ledger: e.ledger, date: e.date };
+        cloture = { hash: e.hash, ledger: e.ledger, index: e.meta.TransactionIndex ?? 0, date: e.date };
       }
       continue;
     }
@@ -118,7 +126,7 @@ export function countVotes({ entries, urne, mptId, listes }) {
     if (amt.value !== "1") bulletin.statut = "rejeté (montant différent de 1)";
     else if (!autorises.has(tx.Account)) bulletin.statut = "rejeté (adresse non autorisée)";
     else if (aVote.has(tx.Account)) bulletin.statut = "rejeté (deuxième vote)";
-    else if (cloture && e.ledger > cloture.ledger) bulletin.statut = "rejeté (après la clôture)";
+    else if (apresCloture(e, cloture)) bulletin.statut = "rejeté (après la clôture)";
     else {
       aVote.add(tx.Account);
       if (memo?.type === "vote" && codes.has(memo.choix)) {

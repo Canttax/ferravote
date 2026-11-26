@@ -85,3 +85,22 @@ test("l'ordre d'arrivée de l'historique ne change rien", () => {
   const r = countVotes({ entries: [...entries].reverse(), urne: URNE, mptId: MPT, listes: LISTES });
   assert.deepEqual(r.resultats.map((l) => [l.code, l.voix]), [["L1", 2], ["L2", 1], ["L3", 0]]);
 });
+
+test("vote dans le même ledger que la clôture : départagé par TransactionIndex", () => {
+  const entries = scenario();
+  const lock = ok({ TransactionType: "MPTokenIssuanceSet", Account: URNE, MPTokenIssuanceID: MPT, Flags: 1 });
+  const avant = voteE("rD", "L3");
+  // même ledger pour les trois : avant (index 0), clôture (index 1), après (index 2)
+  const L = 500;
+  Object.assign(avant, { ledger: L }); avant.meta.TransactionIndex = 0;
+  Object.assign(lock, { ledger: L }); lock.meta.TransactionIndex = 1;
+  const tardif = voteE("rE", "L2");
+  Object.assign(tardif, { ledger: L }); tardif.meta.TransactionIndex = 2;
+  entries.splice(1, 0, auth("rE"));
+  entries.push(tardif, lock, avant); // ordre d'arrivée volontairement mélangé
+  const r = countVotes({ entries, urne: URNE, mptId: MPT, listes: LISTES });
+  assert.equal(r.bulletins.find((b) => b.electeur === "rD").statut, "compté");
+  assert.equal(r.bulletins.find((b) => b.electeur === "rE").statut, "rejeté (après la clôture)");
+  assert.equal(r.resultats.find((l) => l.code === "L3").voix, 1);
+  assert.equal(r.resultats.find((l) => l.code === "L2").voix, 1);
+});
