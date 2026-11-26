@@ -32,22 +32,51 @@ Pas de smart contract, uniquement des fonctions natives de XRPL : `MPTokenIssuan
 | | |
 |---|---|
 | Réseau | XRPL **Testnet** natif |
-| Nœud | `wss://s.altnet.rippletest.net:51233` |
+| Serveur principal | `wss://s.altnet.rippletest.net:51233` |
+| Serveurs de secours (port 443) | `wss://testnet.xrpl-labs.com`, `wss://testnet.honeycluster.io` |
+| Faucet | `https://faucet.altnet.rippletest.net/accounts`, appelé par `client.fundWallet()` |
 | Explorateur | https://testnet.xrpl.org |
-| Faucet | utilisé automatiquement par `client.fundWallet()` |
+
+Pas de compte à créer ni d'inscription : le Testnet est public et les XRP de test sont donnés gratuitement par le faucet. Les scripts essaient les serveurs dans l'ordre, donc si le Wi-Fi de l'école bloque le port 51233 on passe tout seul sur un serveur en port 443. La liste est modifiable dans `.env` (`XRPL_NETWORK`).
 
 Comptes de test uniquement. Aucune seed Mainnet, et aucune seed dans Git.
 
 ## Installation
 
-Prérequis : Node.js 20 ou plus (LTS), npm, Git.
+Deux façons de faire, comme dans la fiche "Accès au XRPL Testnet" du hackathon.
+
+### Option 1 : GitHub Codespaces (recommandée)
+
+Rien à installer et pas de souci de Wi-Fi, le Codespace tourne dans le cloud.
+
+1. Sur la page GitHub du dépôt : **Code** puis **Codespaces** puis **Create codespace on main**.
+2. Le fichier `.devcontainer/devcontainer.json` installe Node 22 et lance `npm install` tout seul.
+3. Dans le terminal du Codespace : `npm run check` puis `npm run demo`.
+4. Pour l'interface, `npm run web` : le port 3000 s'ouvre dans un onglet du navigateur.
+
+Les seeds générées restent dans le `.env` du Codespace, qui n'est pas commité.
+
+### Option 2 : sur son poste
+
+Prérequis : Node.js LTS (20 ou plus), npm, Git.
 
 ```bash
 git clone <url du dépôt>
 cd ferravote
 npm install
-cp .env.example .env     # optionnel, npm run wallets le remplit tout seul
+npm run check        # vérifie la connexion au Testnet et le faucet
 ```
+
+`npm run check` se connecte (avec les serveurs de secours si besoin), affiche le dernier ledger validé et crée un wallet de test avec le faucet. Si ça échoue partout : partage de connexion, Codespaces, ou le [mode simulation](#mode-simulation-sans-réseau).
+
+### Problèmes fréquents
+
+| Symptôme | Ce qu'on fait |
+|---|---|
+| Timeout à la connexion | Le port 51233 est bloqué, les scripts passent sur les serveurs en 443. Sinon partage de connexion ou Codespaces |
+| `faucet saturé` | Toute la promo l'appelle en même temps. Le script réessaie 4 fois, sinon relancer un peu plus tard. On crée nos comptes une fois et on les réutilise via `.env` |
+| Un compte ou un solde a disparu | Le Testnet a été réinitialisé : `npm run wallets -- --force` recrée tout |
+| Transaction envoyée mais rien ne change | On attend toujours la validation et on lit `meta.TransactionResult` (`tesSUCCESS` attendu), c'est ce que fait `submit()` dans `ledger/common.js` |
 
 ## Lancer la démo complète
 
@@ -92,6 +121,7 @@ Le dépouillement et l'interface sont exactement le même code dans les deux mod
 ## Lancer les étapes une par une
 
 ```bash
+npm run check                # test de la connexion et du faucet
 npm run wallets              # wallets de test + liste d'émargement fictive (data/emargement.csv)
 npm run create               # l'urne crée le jeton VOTE
 npm run authorize            # autorisation des inscrits
@@ -125,7 +155,14 @@ La seed n'est utilisée que dans le navigateur pour signer, elle n'est envoyée 
 
 ## Adresses de test
 
-Le Testnet peut être réinitialisé, donc les adresses changent à chaque `npm run wallets`. On met ici celles du scrutin de référence utilisé pour la soutenance :
+Le Testnet est réinitialisé de temps en temps, donc les comptes peuvent disparaître. Pour les recréer :
+
+```bash
+npm run wallets -- --force    # nouveaux wallets via le faucet, .env réécrit
+npm run demo                  # nouveau scrutin complet
+```
+
+Les adresses du dernier run sont dans `data/scrutin-state.json` (adresses publiques seulement). On note ici celles du scrutin de référence montré à la soutenance :
 
 | Compte | Adresse |
 |---|---|
@@ -133,7 +170,7 @@ Le Testnet peut être réinitialisé, donc les adresses changent à chaque `npm 
 | ID du jeton VOTE | _à remplir_ |
 | Électeurs 1 à 6 | _voir `data/scrutin-state.json`_ |
 
-Les seeds correspondantes ne sont **pas** dans le dépôt.
+Les seeds correspondantes ne sont **pas** dans le dépôt. Pour demander de l'aide au mentor on partage les adresses, les hash de transaction et les codes de résultat, jamais une seed.
 
 ## Tests
 
@@ -159,6 +196,8 @@ web/             interface (HTML/JS sans framework) + petit serveur statique
   explorer.html  mini explorateur pour le mode simulation
 sim/             ledger XRPL simulé (moteur, API façon rippled, client compatible xrpl.Client)
 scripts/demo.js  scénario complet
+scripts/check-testnet.js   test d'accès au Testnet
+.devcontainer/   config GitHub Codespaces
 config/scrutin.json   titre du scrutin, listes, nombre d'inscrits
 docs/            format des Memos, guide des notions XRPL
 test/            tests node:test
